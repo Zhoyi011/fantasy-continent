@@ -1,0 +1,6 @@
+{
+  "name": "幻想大陆 · 觉醒编年史",
+  "description": "Canvas 2D 动作 RPG：多职业战斗、动态昼夜光照、暗黑风随机装备掉落与村庄悬赏任务。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

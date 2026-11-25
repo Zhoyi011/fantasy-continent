@@ -1,0 +1,132 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidTalents(t) {
+      return t is map
+        && t.keys().hasAll(['atkLv', 'hpLv', 'goldLv', 'critDmgLv', 'potCapLv'])
+        && t.keys().hasOnly(['atkLv', 'hpLv', 'goldLv', 'critDmgLv', 'potCapLv'])
+        && t.atkLv is number && t.atkLv >= 0 && t.atkLv <= 10
+        && t.hpLv is number && t.hpLv >= 0 && t.hpLv <= 10
+        && t.goldLv is number && t.goldLv >= 0 && t.goldLv <= 10
+        && t.critDmgLv is number && t.critDmgLv >= 0 && t.critDmgLv <= 10
+        && t.potCapLv is number && t.potCapLv >= 0 && t.potCapLv <= 5;
+    }
+
+    function isValidSettings(s) {
+      return s is map
+        && s.keys().hasAll(['muted', 'bgmEnabled', 'sfxVolume', 'bgmVolume'])
+        && s.keys().hasOnly(['muted', 'bgmEnabled', 'sfxVolume', 'bgmVolume'])
+        && s.muted is bool
+        && s.bgmEnabled is bool
+        && s.sfxVolume is number && s.sfxVolume >= 0 && s.sfxVolume <= 1
+        && s.bgmVolume is number && s.bgmVolume >= 0 && s.bgmVolume <= 1;
+    }
+
+    function isValidSlots(slots) {
+      return slots is map
+        && slots.keys().hasAll(['slot1', 'slot2', 'slot3'])
+        && slots.keys().hasOnly(['slot1', 'slot2', 'slot3'])
+        && (slots.slot1 == null || slots.slot1 is map)
+        && (slots.slot2 == null || slots.slot2 is map)
+        && (slots.slot3 == null || slots.slot3 is map);
+    }
+
+    function isValidUserAccount(data) {
+      return data.keys().hasAll([
+          'uid',
+          'displayName',
+          'soulStones',
+          'talents',
+          'bestiary',
+          'unlockedAchievements',
+          'slots',
+          'settings',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'displayName',
+          'soulStones',
+          'talents',
+          'bestiary',
+          'unlockedAchievements',
+          'slots',
+          'settings',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.uid is string
+        && data.uid.size() > 0 && data.uid.size() <= 128
+        && data.uid == request.auth.uid
+        && data.displayName is string
+        && data.displayName.size() <= 80
+        && data.soulStones is number && data.soulStones >= 0 && data.soulStones <= 10000000
+        && isValidTalents(data.talents)
+        && data.bestiary is map
+        && data.bestiary.keys().size() <= 256
+        && data.unlockedAchievements is list
+        && data.unlockedAchievements.size() <= 64
+        && isValidSlots(data.slots)
+        && isValidSettings(data.settings);
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+
+      allow create: if isValidId(userId)
+        && isOwner(userId)
+        && request.auth.token.email_verified == true
+        && isValidUserAccount(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isValidId(userId)
+        && isOwner(userId)
+        && request.auth.token.email_verified == true
+        && isValidUserAccount(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName',
+          'soulStones',
+          'talents',
+          'bestiary',
+          'unlockedAchievements',
+          'slots',
+          'settings',
+          'updatedAt'
+        ]);
+
+      allow delete: if isValidId(userId) && isOwner(userId);
+    }
+  }
+}

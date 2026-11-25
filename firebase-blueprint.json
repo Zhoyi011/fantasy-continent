@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Player cloud save profile containing 3 character save slots, account-wide soul stones, permanent talents, bestiary/achievements, and audio settings.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$",
+          "description": "Firebase Auth UID of the save owner"
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Display name shown in the lobby account card"
+        },
+        "soulStones": {
+          "type": "number",
+          "description": "Account-wide permanent currency for upgrading Ancient Ruins talents"
+        },
+        "talents": {
+          "type": "object",
+          "description": "Permanent talent upgrade levels (atkLv, hpLv, goldLv, critDmgLv, potCapLv)"
+        },
+        "bestiary": {
+          "type": "object",
+          "description": "Map of mob type name to total defeated count"
+        },
+        "unlockedAchievements": {
+          "type": "array",
+          "description": "List of unlocked achievement IDs"
+        },
+        "slots": {
+          "type": "object",
+          "description": "Map of slot1, slot2, slot3 save slot payloads"
+        },
+        "settings": {
+          "type": "object",
+          "description": "Audio mute, BGM, and volume settings"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server last sync timestamp"
+        }
+      },
+      "required": [
+        "uid",
+        "displayName",
+        "soulStones",
+        "talents",
+        "bestiary",
+        "unlockedAchievements",
+        "slots",
+        "settings",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserAccount"
+      },
+      "description": "Stores each authenticated player's private cloud save profile and character slots."
+    }
+  }
+}

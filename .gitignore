@@ -1,0 +1,22 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Native build artifacts & signing secrets
+src-tauri/target/
+src-tauri/gen/
+android/.gradle/
+android/app/build/
+android/build/
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/
+*.jks
+*.keystore
+release-assets/
+SHA256SUMS.txt
+

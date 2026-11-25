@@ -1,0 +1,10 @@
+[Desktop Entry]
+Categories={{categories}}
+Comment=幻想大陆 · 觉醒编年史 — 暗黑幻想动作 RPG
+Exec={{exec}}
+Icon={{icon}}
+Name=幻想大陆
+Name[zh_CN]=幻想大陆
+Terminal=false
+Type=Application
+StartupWMClass=fantasy-continent

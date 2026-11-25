@@ -1,0 +1,14 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "幻想大陆",
+  "mainBinaryName": "fantasy-continent",
+  "bundle": {
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["SimpChinese", "English"],
+        "displayLanguageSelector": false
+      }
+    }
+  }
+}

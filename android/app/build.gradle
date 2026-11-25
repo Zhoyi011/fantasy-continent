@@ -1,0 +1,75 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "com.zhoyi.fantasycontinent"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.zhoyi.fantasycontinent"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode((project.findProperty("APP_VERSION_CODE") ?: System.getenv("ANDROID_VERSION_CODE") ?: "10000") as int)
+        versionName((project.findProperty("APP_VERSION_NAME") ?: System.getenv("RELEASE_VERSION") ?: "1.0.0").toString().replaceFirst(/^v/, ""))
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            def ksPath = (project.findProperty("KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH") ?: "").toString().trim()
+            if (ksPath) {
+                def ksFile = file(ksPath)
+                if (!ksFile.exists() || ksFile.length() == 0L) {
+                    throw new GradleException("Android release keystore file not found or empty: " + ksPath)
+                }
+                storeFile ksFile
+                storePassword((project.findProperty("KEYSTORE_PASSWORD") ?: System.getenv("KEYSTORE_PASSWORD") ?: "").toString())
+                keyAlias((project.findProperty("KEY_ALIAS") ?: System.getenv("KEY_ALIAS") ?: "").toString())
+                keyPassword((project.findProperty("KEY_PASSWORD") ?: System.getenv("KEY_PASSWORD") ?: "").toString())
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            def ksPath = (project.findProperty("KEYSTORE_PATH") ?: System.getenv("KEYSTORE_PATH") ?: "").toString().trim()
+            if (ksPath) {
+                signingConfig signingConfigs.release
+            } else if ((System.getenv("CI") ?: "") == "true" && gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }) {
+                throw new GradleException("CI release build requires KEYSTORE_PATH, KEYSTORE_PASSWORD, KEY_ALIAS, and KEY_PASSWORD.")
+            }
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
