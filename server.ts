@@ -327,7 +327,17 @@ async function startServer() {
   });
 
   const server = http.createServer(app);
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  const wss = new WebSocketServer({ noServer: true });
+
+  server.on('upgrade', (request, socket, head) => {
+    const reqUrl = request.url || '';
+    const pathname = reqUrl.split('?')[0];
+    if (pathname === '/ws') {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+      });
+    }
+  });
 
   wss.on('connection', (ws) => {
     let sessionUid: string | null = null;
@@ -845,9 +855,13 @@ async function startServer() {
   });
 
   if (process.env.NODE_ENV !== 'production') {
+    const hmrDisabled = process.env.DISABLE_HMR === 'true';
     const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: hmrDisabled ? false : { server, path: '/vite-hmr' },
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
