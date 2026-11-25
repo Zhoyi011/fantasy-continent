@@ -58,14 +58,22 @@ export const firebaseConfig = {
   ),
 };
 
+export function getFirebaseMissingFields(): string[] {
+  const missing: string[] = [];
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey.includes('YOUR_')) {
+    missing.push('API Key (VITE_FIREBASE_API_KEY / FIREBASE_API_KEY)');
+  }
+  if (!firebaseConfig.projectId || firebaseConfig.projectId.includes('remixed-project-id')) {
+    missing.push('Project ID (projectId)');
+  }
+  if (!firebaseConfig.appId) {
+    missing.push('App ID (appId)');
+  }
+  return missing;
+}
+
 export function isFirebaseConfigured(): boolean {
-  return Boolean(
-    firebaseConfig.apiKey &&
-      firebaseConfig.projectId &&
-      firebaseConfig.appId &&
-      !firebaseConfig.apiKey.includes('YOUR_') &&
-      !firebaseConfig.projectId.includes('remixed-project-id')
-  );
+  return getFirebaseMissingFields().length === 0;
 }
 
 let app: FirebaseApp | null = null;

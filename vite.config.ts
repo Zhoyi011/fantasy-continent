@@ -2,7 +2,7 @@ import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'node:fs';
 import path from 'path';
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 const rootPkg = JSON.parse(
@@ -22,15 +22,23 @@ const resolvedAppVersion = (
   .replace(/^v/i, '')
   .trim();
 
-function loadFirebaseClientConfig(): Record<string, string> {
+function loadFirebaseClientConfig(env: Record<string, string>): Record<string, string> {
+  const readVar = (...keys: string[]): string => {
+    for (const k of keys) {
+      const val = (env[k] || process.env[k] || '').trim();
+      if (val) return val;
+    }
+    return '';
+  };
+
   const envOverrides = {
-    apiKey: (process.env.VITE_FIREBASE_API_KEY || '').trim(),
-    authDomain: (process.env.VITE_FIREBASE_AUTH_DOMAIN || '').trim(),
-    projectId: (process.env.VITE_FIREBASE_PROJECT_ID || '').trim(),
-    storageBucket: (process.env.VITE_FIREBASE_STORAGE_BUCKET || '').trim(),
-    messagingSenderId: (process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '').trim(),
-    appId: (process.env.VITE_FIREBASE_APP_ID || '').trim(),
-    firestoreDatabaseId: (process.env.VITE_FIREBASE_DATABASE_ID || '').trim(),
+    apiKey: readVar('VITE_FIREBASE_API_KEY', 'FIREBASE_API_KEY'),
+    authDomain: readVar('VITE_FIREBASE_AUTH_DOMAIN', 'FIREBASE_AUTH_DOMAIN'),
+    projectId: readVar('VITE_FIREBASE_PROJECT_ID', 'FIREBASE_PROJECT_ID'),
+    storageBucket: readVar('VITE_FIREBASE_STORAGE_BUCKET', 'FIREBASE_STORAGE_BUCKET'),
+    messagingSenderId: readVar('VITE_FIREBASE_MESSAGING_SENDER_ID', 'FIREBASE_MESSAGING_SENDER_ID'),
+    appId: readVar('VITE_FIREBASE_APP_ID', 'FIREBASE_APP_ID'),
+    firestoreDatabaseId: readVar('VITE_FIREBASE_DATABASE_ID', 'FIREBASE_DATABASE_ID'),
   };
 
   const mergeWithParsed = (parsed: Record<string, unknown>): Record<string, string> => ({
@@ -44,7 +52,7 @@ function loadFirebaseClientConfig(): Record<string, string> {
       envOverrides.firestoreDatabaseId || String(parsed.firestoreDatabaseId ?? '(default)').trim() || '(default)',
   });
 
-  const fromEnvJson = (process.env.FIREBASE_APPLET_CONFIG_JSON || '').trim();
+  const fromEnvJson = readVar('FIREBASE_APPLET_CONFIG_JSON');
   if (fromEnvJson) {
     try {
       return mergeWithParsed(JSON.parse(fromEnvJson) as Record<string, unknown>);
@@ -73,11 +81,12 @@ function loadFirebaseClientConfig(): Record<string, string> {
   };
 }
 
-export default defineConfig(() => {
+export default defineConfig(({ mode }) => {
+  const loadedEnv = loadEnv(mode, import.meta.dirname, '');
   return {
     define: {
       __APP_VERSION__: JSON.stringify(resolvedAppVersion),
-      __FIREBASE_CONFIG__: JSON.stringify(loadFirebaseClientConfig()),
+      __FIREBASE_CONFIG__: JSON.stringify(loadFirebaseClientConfig(loadedEnv)),
     },
     plugins: [
       react(),

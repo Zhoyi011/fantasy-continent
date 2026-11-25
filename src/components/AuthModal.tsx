@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Cloud, LogIn, LogOut, Mail, RefreshCw, UserPlus, X } from 'lucide-react';
 import {
+  getFirebaseMissingFields,
   isFirebaseConfigured,
   registerWithEmail,
   resendVerificationEmail,
@@ -52,6 +53,7 @@ export function AuthModal({
   onClose,
 }: AuthModalProps) {
   const configured = isFirebaseConfigured();
+  const missingFields = configured ? [] : getFirebaseMissingFields();
   const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -215,9 +217,18 @@ export function AuthModal({
         {user.isGuest && (
           <div className="mt-4 space-y-4">
             {!configured && (
-              <div className="rounded-lg border border-amber-500/35 bg-amber-950/25 p-3 text-xs text-amber-200">
-                当前未检测到有效 Firebase API Key，游戏处于「本地游客模式」。配置{' '}
-                <code>VITE_FIREBASE_API_KEY</code>（或 GitHub Secret <code>FIREBASE_API_KEY</code>）后即可启用云端同步。
+              <div className="rounded-lg border border-amber-500/35 bg-amber-950/25 p-3 text-xs text-amber-200 space-y-1">
+                <div>当前未检测到完整的 Firebase 客户端配置，游戏处于「本地游客模式」。</div>
+                {missingFields.length > 0 && (
+                  <div className="text-amber-300/90">
+                    当前缺失项：<code>{missingFields.join('、')}</code>
+                  </div>
+                )}
+                <div className="text-amber-200/80">
+                  需同时提供 <code>apiKey</code>、<code>projectId</code> 与 <code>appId</code>（本地可通过{' '}
+                  <code>firebase-applet-config.json</code> + <code>VITE_FIREBASE_API_KEY</code>，GitHub 构建需同时配置{' '}
+                  <code>FIREBASE_API_KEY</code> 与 <code>FIREBASE_APPLET_CONFIG_JSON</code>）。
+                </div>
               </div>
             )}
 
