@@ -2,6 +2,8 @@ name: Release Fantasy Continent
 
 on:
   push:
+    branches:
+      - main
     tags:
       - 'v*.*.*'
   workflow_dispatch:
@@ -16,17 +18,27 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'push' && github.ref_type == 'branch' }}
 
 jobs:
   prepare:
     name: Prepare Version, Checks & Chinese Changelog
+    # 防循环触发保护：跳过由机器人账号触发或提交信息含 [skip ci] / [skip release] 的分支推送；Tag 与手动触发始终执行
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.ref_type == 'tag' ||
+      (
+        github.actor != 'github-actions[bot]' &&
+        !contains(github.event.head_commit.message, '[skip ci]') &&
+        !contains(github.event.head_commit.message, '[skip release]')
+      )
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.sync.outputs.version }}
       tag: ${{ steps.sync.outputs.tag }}
       android_version_code: ${{ steps.sync.outputs.android_version_code }}
       release_date: ${{ steps.sync.outputs.release_date }}
+      is_prerelease: ${{ steps.sync.outputs.is_prerelease }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,13 +57,27 @@ jobs:
             npm install --no-audit --no-fund
           fi
 
-      - name: Sync release version & generate Chinese metadata
+      - name: Resolve & sync release version
         id: sync
         env:
           INPUT_VERSION: ${{ inputs.version }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
           node scripts/sync-version.mjs
+          VER=$(node -p "require('./package.json').version")
+          if [[ "$VER" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Trigger: event=${{ github.event_name }}, ref_type=${{ github.ref_type }}, ref=${{ github.ref_name }}, sha=${{ github.sha }}"
+          echo "Resolved version: $VER"
+
+      - name: Generate Chinese version.json & release notes
+        env:
+          RELEASE_VERSION: ${{ steps.sync.outputs.version }}
+          RELEASE_DATE: ${{ steps.sync.outputs.release_date }}
+        run: |
           node scripts/generate-version-json.mjs --version "$RELEASE_VERSION" --date "$RELEASE_DATE"
           node scripts/generate-release-notes.mjs --out RELEASE_NOTES.md
           echo "=== Generated public/version.json ==="
@@ -96,7 +122,8 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APPLET_CONFIG_JSON: ${{ secrets.FIREBASE_APPLET_CONFIG_JSON }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}
         run: |
           node scripts/sync-version.mjs --version "$RELEASE_VERSION"
           npm run build
@@ -168,7 +195,8 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APPLET_CONFIG_JSON: ${{ secrets.FIREBASE_APPLET_CONFIG_JSON }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}
         run: |
           npx tauri build --config src-tauri/tauri.windows.conf.json --bundles nsis
 
@@ -286,7 +314,8 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APPLET_CONFIG_JSON: ${{ secrets.FIREBASE_APPLET_CONFIG_JSON }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}
         run: |
           node scripts/sync-version.mjs --version "$RELEASE_VERSION"
           npm run build
@@ -392,7 +421,8 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_APPLET_CONFIG_JSON: ${{ secrets.FIREBASE_APPLET_CONFIG_JSON }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY || secrets.VITE_FIREBASE_API_KEY || vars.VITE_FIREBASE_API_KEY }}
           NO_STRIP: "true"
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |
@@ -443,6 +473,9 @@ jobs:
     name: Verify Assets, Generate SHA256SUMS & Publish Release
     needs: [prepare, build-web, build-windows, build-android, build-linux]
     runs-on: ubuntu-latest
+    concurrency:
+      group: github-release-${{ needs.prepare.outputs.tag }}
+      cancel-in-progress: false
     steps:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -522,8 +555,8 @@ jobs:
           name: "《幻想大陆》${{ needs.prepare.outputs.tag }}"
           body_path: RELEASE_NOTES.md
           draft: false
-          prerelease: false
-          make_latest: true
+          prerelease: ${{ needs.prepare.outputs.is_prerelease == 'true' }}
+          make_latest: ${{ needs.prepare.outputs.is_prerelease != 'true' }}
           fail_on_unmatched_files: true
           files: |
             release-assets/fantasy-continent-windows-setup.exe
