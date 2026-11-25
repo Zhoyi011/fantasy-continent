@@ -17,12 +17,18 @@ import rawConfig from '../firebase-applet-config.json';
 
 /**
  * Firebase 配置说明：
- * 当前默认读取根目录 `firebase-applet-config.json`（已由环境自动注入或可手动替换为您的 Firebase 项目配置）。
- * 若配置为空或处于离线状态，游戏将自动降级为「本地游客模式 (Offline/Guest Mode)」，
+ * `apiKey` 优先读取构建环境变量 `VITE_FIREBASE_API_KEY`（本地 `.env.local` 或 GitHub Secret `FIREBASE_API_KEY`），
+ * 其余项目标识保留在 `firebase-applet-config.json` 中，避免公开仓库触发密钥泄露告警。
+ * 若未配置密钥或处于离线状态，游戏将自动降级为「本地游客模式 (Offline/Guest Mode)」，
  * 所有存档、灵魂石与天赋树进度均无缝保存在浏览器 localStorage 中，不会报错崩溃。
  */
+const envFirebaseApiKey =
+  typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY
+    ? String(import.meta.env.VITE_FIREBASE_API_KEY).trim()
+    : '';
+
 export const firebaseConfig = {
-  apiKey: rawConfig.apiKey || '',
+  apiKey: envFirebaseApiKey || String(rawConfig.apiKey || '').trim(),
   authDomain: rawConfig.authDomain || '',
   projectId: rawConfig.projectId || '',
   storageBucket: rawConfig.storageBucket || '',

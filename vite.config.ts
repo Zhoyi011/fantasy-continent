@@ -22,10 +22,59 @@ const resolvedAppVersion = (
   .replace(/^v/i, '')
   .trim();
 
+function loadFirebaseClientConfig(): Record<string, string> {
+  const fromEnvJson = (process.env.FIREBASE_APPLET_CONFIG_JSON || '').trim();
+  if (fromEnvJson) {
+    try {
+      const parsed = JSON.parse(fromEnvJson) as Record<string, unknown>;
+      return {
+        apiKey: String(parsed.apiKey ?? ''),
+        authDomain: String(parsed.authDomain ?? ''),
+        projectId: String(parsed.projectId ?? ''),
+        storageBucket: String(parsed.storageBucket ?? ''),
+        messagingSenderId: String(parsed.messagingSenderId ?? ''),
+        appId: String(parsed.appId ?? ''),
+        firestoreDatabaseId: String(parsed.firestoreDatabaseId ?? '(default)'),
+      };
+    } catch {
+      console.warn('[vite.config] Invalid FIREBASE_APPLET_CONFIG_JSON ignored.');
+    }
+  }
+
+  const localConfigPath = path.resolve(import.meta.dirname, 'firebase-applet-config.json');
+  if (fs.existsSync(localConfigPath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(localConfigPath, 'utf-8')) as Record<string, unknown>;
+      return {
+        apiKey: String(parsed.apiKey ?? ''),
+        authDomain: String(parsed.authDomain ?? ''),
+        projectId: String(parsed.projectId ?? ''),
+        storageBucket: String(parsed.storageBucket ?? ''),
+        messagingSenderId: String(parsed.messagingSenderId ?? ''),
+        appId: String(parsed.appId ?? ''),
+        firestoreDatabaseId: String(parsed.firestoreDatabaseId ?? '(default)'),
+      };
+    } catch {
+      console.warn('[vite.config] Invalid firebase-applet-config.json ignored.');
+    }
+  }
+
+  return {
+    apiKey: process.env.VITE_FIREBASE_API_KEY || '',
+    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID || '',
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+    appId: process.env.VITE_FIREBASE_APP_ID || '',
+    firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID || '(default)',
+  };
+}
+
 export default defineConfig(() => {
   return {
     define: {
       __APP_VERSION__: JSON.stringify(resolvedAppVersion),
+      __FIREBASE_CONFIG__: JSON.stringify(loadFirebaseClientConfig()),
     },
     plugins: [
       react(),

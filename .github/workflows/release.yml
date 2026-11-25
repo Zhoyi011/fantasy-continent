@@ -87,6 +87,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
         run: |
           node scripts/sync-version.mjs --version "$RELEASE_VERSION"
           npm run build
@@ -153,6 +154,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
         run: |
           npx tauri build --config src-tauri/tauri.windows.conf.json --bundles nsis
 
@@ -266,6 +268,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
         run: |
           node scripts/sync-version.mjs --version "$RELEASE_VERSION"
           npm run build
@@ -367,6 +370,7 @@ jobs:
         env:
           RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
           RELEASE_DATE: ${{ needs.prepare.outputs.release_date }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
           NO_STRIP: "true"
           APPIMAGE_EXTRACT_AND_RUN: "1"
         run: |

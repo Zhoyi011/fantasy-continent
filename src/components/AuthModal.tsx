@@ -216,8 +216,8 @@ export function AuthModal({
           <div className="mt-4 space-y-4">
             {!configured && (
               <div className="rounded-lg border border-amber-500/35 bg-amber-950/25 p-3 text-xs text-amber-200">
-                当前未检测到有效 Firebase 配置，游戏处于「本地游客模式」。在根目录{' '}
-                <code>firebase-applet-config.json</code> 中填入配置后即可启用云端同步。
+                当前未检测到有效 Firebase API Key，游戏处于「本地游客模式」。配置{' '}
+                <code>VITE_FIREBASE_API_KEY</code>（或 GitHub Secret <code>FIREBASE_API_KEY</code>）后即可启用云端同步。
               </div>
             )}
 
