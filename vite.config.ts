@@ -23,19 +23,31 @@ const resolvedAppVersion = (
   .trim();
 
 function loadFirebaseClientConfig(): Record<string, string> {
+  const envOverrides = {
+    apiKey: (process.env.VITE_FIREBASE_API_KEY || '').trim(),
+    authDomain: (process.env.VITE_FIREBASE_AUTH_DOMAIN || '').trim(),
+    projectId: (process.env.VITE_FIREBASE_PROJECT_ID || '').trim(),
+    storageBucket: (process.env.VITE_FIREBASE_STORAGE_BUCKET || '').trim(),
+    messagingSenderId: (process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '').trim(),
+    appId: (process.env.VITE_FIREBASE_APP_ID || '').trim(),
+    firestoreDatabaseId: (process.env.VITE_FIREBASE_DATABASE_ID || '').trim(),
+  };
+
+  const mergeWithParsed = (parsed: Record<string, unknown>): Record<string, string> => ({
+    apiKey: envOverrides.apiKey || String(parsed.apiKey ?? '').trim(),
+    authDomain: envOverrides.authDomain || String(parsed.authDomain ?? '').trim(),
+    projectId: envOverrides.projectId || String(parsed.projectId ?? '').trim(),
+    storageBucket: envOverrides.storageBucket || String(parsed.storageBucket ?? '').trim(),
+    messagingSenderId: envOverrides.messagingSenderId || String(parsed.messagingSenderId ?? '').trim(),
+    appId: envOverrides.appId || String(parsed.appId ?? '').trim(),
+    firestoreDatabaseId:
+      envOverrides.firestoreDatabaseId || String(parsed.firestoreDatabaseId ?? '(default)').trim() || '(default)',
+  });
+
   const fromEnvJson = (process.env.FIREBASE_APPLET_CONFIG_JSON || '').trim();
   if (fromEnvJson) {
     try {
-      const parsed = JSON.parse(fromEnvJson) as Record<string, unknown>;
-      return {
-        apiKey: String(parsed.apiKey ?? ''),
-        authDomain: String(parsed.authDomain ?? ''),
-        projectId: String(parsed.projectId ?? ''),
-        storageBucket: String(parsed.storageBucket ?? ''),
-        messagingSenderId: String(parsed.messagingSenderId ?? ''),
-        appId: String(parsed.appId ?? ''),
-        firestoreDatabaseId: String(parsed.firestoreDatabaseId ?? '(default)'),
-      };
+      return mergeWithParsed(JSON.parse(fromEnvJson) as Record<string, unknown>);
     } catch {
       console.warn('[vite.config] Invalid FIREBASE_APPLET_CONFIG_JSON ignored.');
     }
@@ -44,29 +56,20 @@ function loadFirebaseClientConfig(): Record<string, string> {
   const localConfigPath = path.resolve(import.meta.dirname, 'firebase-applet-config.json');
   if (fs.existsSync(localConfigPath)) {
     try {
-      const parsed = JSON.parse(fs.readFileSync(localConfigPath, 'utf-8')) as Record<string, unknown>;
-      return {
-        apiKey: String(parsed.apiKey ?? ''),
-        authDomain: String(parsed.authDomain ?? ''),
-        projectId: String(parsed.projectId ?? ''),
-        storageBucket: String(parsed.storageBucket ?? ''),
-        messagingSenderId: String(parsed.messagingSenderId ?? ''),
-        appId: String(parsed.appId ?? ''),
-        firestoreDatabaseId: String(parsed.firestoreDatabaseId ?? '(default)'),
-      };
+      return mergeWithParsed(JSON.parse(fs.readFileSync(localConfigPath, 'utf-8')) as Record<string, unknown>);
     } catch {
       console.warn('[vite.config] Invalid firebase-applet-config.json ignored.');
     }
   }
 
   return {
-    apiKey: process.env.VITE_FIREBASE_API_KEY || '',
-    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID || '',
-    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-    appId: process.env.VITE_FIREBASE_APP_ID || '',
-    firestoreDatabaseId: process.env.VITE_FIREBASE_DATABASE_ID || '(default)',
+    apiKey: envOverrides.apiKey,
+    authDomain: envOverrides.authDomain,
+    projectId: envOverrides.projectId,
+    storageBucket: envOverrides.storageBucket,
+    messagingSenderId: envOverrides.messagingSenderId,
+    appId: envOverrides.appId,
+    firestoreDatabaseId: envOverrides.firestoreDatabaseId || '(default)',
   };
 }
 

@@ -13,28 +13,49 @@ import {
   type User,
 } from 'firebase/auth';
 import { doc, getDocFromServer, getFirestore, type Firestore } from 'firebase/firestore';
-import rawConfig from '../firebase-applet-config.json';
 
 /**
  * Firebase 配置说明：
- * `apiKey` 优先读取构建环境变量 `VITE_FIREBASE_API_KEY`（本地 `.env.local` 或 GitHub Secret `FIREBASE_API_KEY`），
- * 其余项目标识保留在 `firebase-applet-config.json` 中，避免公开仓库触发密钥泄露告警。
- * 若未配置密钥或处于离线状态，游戏将自动降级为「本地游客模式 (Offline/Guest Mode)」，
- * 所有存档、灵魂石与天赋树进度均无缝保存在浏览器 localStorage 中，不会报错崩溃。
+ * 由 `vite.config.ts` 在构建期按优先级读取：
+ * 1) `FIREBASE_APPLET_CONFIG_JSON` / `VITE_FIREBASE_*`（GitHub Secrets 或 `.env.local`）；
+ * 2) 本地 `firebase-applet-config.json`（已列入 `.gitignore`，不强制存在于 CI 仓库中）。
+ * 不再静态 `import ../firebase-applet-config.json`，确保无本地配置文件时 `tsc --noEmit` 也能正常通过；
+ * 若未配置密钥或处于离线状态，游戏将自动降级为「本地游客模式 (Offline/Guest Mode)」。
  */
-const envFirebaseApiKey =
-  typeof import.meta !== 'undefined' && import.meta.env?.VITE_FIREBASE_API_KEY
-    ? String(import.meta.env.VITE_FIREBASE_API_KEY).trim()
-    : '';
+const buildConfig: {
+  readonly apiKey?: string;
+  readonly authDomain?: string;
+  readonly projectId?: string;
+  readonly storageBucket?: string;
+  readonly messagingSenderId?: string;
+  readonly appId?: string;
+  readonly firestoreDatabaseId?: string;
+} =
+  typeof __FIREBASE_CONFIG__ !== 'undefined' && __FIREBASE_CONFIG__
+    ? __FIREBASE_CONFIG__
+    : {};
+
+const env: Partial<ImportMetaEnv> =
+  typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {};
+
+const readField = (
+  envValue: string | undefined,
+  buildValue: string | undefined,
+  fallback = ''
+): string => String(envValue || buildValue || fallback).trim();
 
 export const firebaseConfig = {
-  apiKey: envFirebaseApiKey || String(rawConfig.apiKey || '').trim(),
-  authDomain: rawConfig.authDomain || '',
-  projectId: rawConfig.projectId || '',
-  storageBucket: rawConfig.storageBucket || '',
-  messagingSenderId: rawConfig.messagingSenderId || '',
-  appId: rawConfig.appId || '',
-  firestoreDatabaseId: rawConfig.firestoreDatabaseId || '(default)',
+  apiKey: readField(env.VITE_FIREBASE_API_KEY, buildConfig.apiKey),
+  authDomain: readField(env.VITE_FIREBASE_AUTH_DOMAIN, buildConfig.authDomain),
+  projectId: readField(env.VITE_FIREBASE_PROJECT_ID, buildConfig.projectId),
+  storageBucket: readField(env.VITE_FIREBASE_STORAGE_BUCKET, buildConfig.storageBucket),
+  messagingSenderId: readField(env.VITE_FIREBASE_MESSAGING_SENDER_ID, buildConfig.messagingSenderId),
+  appId: readField(env.VITE_FIREBASE_APP_ID, buildConfig.appId),
+  firestoreDatabaseId: readField(
+    env.VITE_FIREBASE_DATABASE_ID,
+    buildConfig.firestoreDatabaseId,
+    '(default)'
+  ),
 };
 
 export function isFirebaseConfigured(): boolean {
